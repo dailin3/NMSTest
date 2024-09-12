@@ -4,7 +4,7 @@ signup_url = 'http://127.0.0.1:1323/signup'
 login_url="http://127.0.0.1:1323/login"
 info_url="http://127.0.0.1:1323/api/info"
 validate_url="http://127.0.0.1:1323/api/validate"
-beat_delay=5
+beat_delay=8
 
 user_name = {'username': '111'}
 secret_key="11111111111111" 
@@ -91,6 +91,8 @@ for i in range(100):
         print("try again...")
         if "Connection refused" in str(err):
             err="status:1"
+        if "'token'" in str(err):
+            err="login time limit!"
         print(err)
         time.sleep(beat_delay)
 #获得长时间有效token
