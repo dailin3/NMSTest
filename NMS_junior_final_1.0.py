@@ -34,10 +34,10 @@ token=''
 status=0    #status 4 就是失去session
 wait=30     #等待代码刷新
 success=0   #成功次数
+beat_delay=5 #心跳间隔
 
 def get_data(user_name):
     res = requests.post(url=signup_url, data=user_name)
-    print("get_data:"+str(res.text))
     return json.loads(res.text)
 
 def login(user_data):
@@ -95,8 +95,8 @@ def get_code(token):
         "Authorization": "Bearer "+token 
     }
     res=json.loads(requests.get(info_url,headers=headers).text)
-    print("get:"+str(res))
     code=res["code"]
+    print("get code:"+code)
     return code
 
 def post_code(token,code):
@@ -113,12 +113,12 @@ def heart_beat():
     global wait,status,token
     while True:
         token_update()
-        print(status)
-        if status == 4 or status == 2:  #or status ==2 可以更好的抓住status 2作为提交机会
+        print("status:"+str(status))
+        if status == 4 or status == 2:  #可以更好的抓住status 2作为提交机会
             print("relogin to get new token...")
             login(user_data)
-        wait+=1
-        time.sleep(10)
+        wait+=beat_delay
+        time.sleep(beat_delay)
 
 for i in range(100):
     try:
