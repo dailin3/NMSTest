@@ -21,7 +21,6 @@ import requests,json,time,threading
 import config
 
 
-
 token = ""
 status = 0
 success=0
@@ -81,23 +80,21 @@ def token_update():
             token=res["token"]
             status = 0
 
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
         if "Connection refused" in str(e):
             status = 1
-        else:
-            log_and_print(config.log_file,"update:"+str(e))
+    except Exception as e:
+        log_and_print(config.log_file,"update:"+str(e))
+        status = -1
 
 
-def get_code(token):
+def get_and_post_code(token):
     headers={
         "Authorization": "Bearer "+token 
     }
     res=json.loads(requests.get(config.info_url,headers=headers).text)
     code=res["code"]
     print("get code:"+code)
-    return code
-
-def post_code(token,code):
     headers={
         "Authorization": "Bearer "+token 
     }
@@ -126,6 +123,8 @@ def log_and_print(file_name:str ,content):
         logfile.write(current_time + str(content) + '\n')
     print(content)
 
+
+
 for i in range(20):
     try:
         password=get_password(user_name=username)
@@ -142,9 +141,12 @@ beat.start()
 
 while success < 15:
     if wait>30 and status==0:#条件允许，则提交code
-        code=get_code(token)
-        post_code(code=code,token=token)
-        success+=1
-        print(f"it is the {success} success!!!!!!!")
-        wait=0
+        try:
+            get_and_post_code(token)
+            success+=1
+            print(f"it is the {success} success!!!!!!!")
+            wait=0
+        except Exception as e:
+            log_and_print(config.log_file,"run:"+str(e))
+            status=-1
 
