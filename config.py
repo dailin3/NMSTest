@@ -1,4 +1,6 @@
-#when your company update the servers, you can directly change the project's constant in this file. (ﾉ>ω<)ﾉ
+#when your company update the servers,
+#you can directly change the project's constant in this file.
+#(ﾉ>ω<)ﾉ
 import os
 
 root_dir = os.path.dirname(os.path.abspath(__file__))

@@ -1,3 +1,4 @@
+
 import requests
 import json
 import time
@@ -24,7 +25,7 @@ def get_password(username):
         err = res["message"]
         raise requests.exceptions.ConnectionError(err)  # return "message" is due to servers' status not good(status 1 or 3)
 
-#上面是获得用户的信息（密码）
+#上面是获得用户的信息（密码）( º﹃º )
 
 def login(username,password):
     global token
@@ -52,7 +53,7 @@ def fake_token():
     print("fake a new token:"+token[:15])
     with open(config.token_file, 'w') as f:
         f.write(token)
-#（关键）上面是通过已知的密钥，伪造长时间有效token
+#（关键）上面是通过已知的密钥，伪造长时间有效token。
 
 def get_and_post_code(token):
     headers={
@@ -82,7 +83,7 @@ def get_and_post_code(token):
         except Exception as e:
             log_and_print(config.log_file,"occur unexpected error:" + str(e))
 
-#（关键）当服务器出现问题时，重复提交请求，保证获得和提交code,并且提交
+#（关键）当服务器出现问题时，重复提交请求，保证获得和提交code,并且提交。
 
 def log_and_print(file_name:str ,content):
     current_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S ')
@@ -117,3 +118,5 @@ if __name__ == "__main__":
         print(f"it is the {success} success!!!")
         time.sleep(config.code_fresh)
     #提交10次不同的code
+
+# 应该可以跑起来吧 (｡ŏ_ŏ)

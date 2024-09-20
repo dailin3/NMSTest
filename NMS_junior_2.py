@@ -111,7 +111,7 @@ def log_and_print(file_name:str ,content):
     with open(file_name, 'a') as logfile:
         logfile.write(current_time + str(content) + '\n')
     print(content)
-
+# 记录日志 ε٩(๑> ₃ <)۶з
 
 
 for i in range(config.max_retries):
@@ -131,7 +131,7 @@ for i in range(config.max_retries):
 
 beat=threading.Thread(target=heart_beat,daemon=True) #daemon used to stop this thread when main thread stop
 beat.start()
-#开始心跳，来检查服务器状态
+#开始心跳(╭￣3￣)╭♡，来检查服务器状态
 
 while success < config.post_target:
     if wait>config.code_fresh and status== "fine": #条件允许，则提交code
@@ -145,3 +145,4 @@ while success < config.post_target:
                 log_and_print(config.log_file,"post occur unexpected error:" + str(e))
                 status= "?"
 
+# :;(∩´﹏`∩);: 补药出bug啊
