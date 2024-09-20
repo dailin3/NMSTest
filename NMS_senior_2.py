@@ -75,7 +75,7 @@ def get_and_post_code(token):
         except requests.exceptions.ConnectionError as e:
             if "Connection refused" in str(e):
                 e = "Connection refused"
-            print("can't login due to network error:" + str(e))
+            print("can't post due to network error:" + str(e))
             print("try again...")
             time.sleep(config.beat_delay)
             continue

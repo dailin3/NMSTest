@@ -2,7 +2,7 @@
 token time = 20s
 code refresh = 30s
 status changing = 10s
-login forbbiden time = 20s
+login forbidden time = 20s
 
 status 1: connection refused
 status 2:(enter:expire session 
@@ -22,17 +22,23 @@ import config
 
 
 token = ""
-status = 0
+status = "fine"
 success=0
 wait=30
-username= "dailin"
+username = "dailin"
 password = ""
 
 
-def get_password(user_name):
-    user_name = {'username': user_name}
-    res = requests.post(url=config.signup_url, data=user_name)
-    return json.loads(res.text)["password"]
+def get_password(username):
+    user_name = {'username': username}
+    print("getting user data...")
+    res= json.loads(requests.post(url=config.signup_url, data=user_name).text)
+    if "password" in res:
+        print("get user password:"+res["password"])
+        return res["password"]
+    elif "message" in res:
+        err = res["message"]
+        raise requests.exceptions.ConnectionError(err)  # return "message" is due to servers' status not good(status 1 or 3)
 
 def login(username,password):
     global token
@@ -40,82 +46,65 @@ def login(username,password):
         'username': username,
         'password': password
     }
+    print("try login...")
     res = json.loads(requests.post(url=config.login_url, data=user_data).text)
-    if "message" in res:
-        err = res["message"]
-        if err =="Forbidden":
-            print("repeated login? wait")
-            time.sleep(10) #避免重复登陆
-        else:
-            print(err)
-            raise ConnectionError("3")
-    elif "token" in res:
+    if "token" in res:
         token= res["token"]
         print("login:"+token[:10])
-    else:
-        log_and_print(config.log_file,"login:"+str(res))
+    elif "message" in res:
+        err = res["message"]
+        if "Connection refused" in str(err):
+            err = "Connection refused"
+        raise requests.exceptions.ConnectionError(err)
+
 
 def token_update():
     global token, status
-    headers={
-        "Authorization": "Bearer "+token 
-    }
-    try:
-        res=json.loads(requests.get(url=config.heartbeat_url, headers=headers).text)
-        if "message" in res:
-            err=res["message"]
-            if err == "Internal Server Error":
-                status = 2
-
-            elif err == "Bad Gateway":
-                status = 3
-            
-            elif err == "invalid or expired jwt" or "missing or malformed jwt":
-                status = 4 
-            
-            else:
-                print("beat:"+err)
-            #status 2,3
-        else:
-            token=res["token"]
-            status = 0
-
-    except requests.exceptions.ConnectionError as e:
-        if "Connection refused" in str(e):
-            status = 1
-    except Exception as e:
-        log_and_print(config.log_file,"update:"+str(e))
-        status = -1
+    headers={"Authorization": "Bearer "+token }
+    res=json.loads(requests.get(url=config.heartbeat_url, headers=headers).text)
+    if "token" in res:
+        token=res["token"]
+        status = "fine"
+    elif "message" in res:
+        status =res["message"]
+        raise requests.exceptions.ConnectionError(status)
 
 
 def get_and_post_code(token):
-    headers={
-        "Authorization": "Bearer "+token 
-    }
+    headers={"Authorization": "Bearer "+token }
     res=json.loads(requests.get(config.info_url,headers=headers).text)
-    code=res["code"]
+    code = res["code"]
     print("get code:"+code)
-    headers={
-        "Authorization": "Bearer "+token 
-    }
-    data={
-        "code":code
-    }
+    headers={"Authorization": "Bearer "+token }
+    data={"code":code}
     res=json.loads(requests.post(config.validate_url,headers=headers,data=data).text)
-    print(res)
+    print(res) #try and exception is below, because this function is running in a safe environment,so I didn't do exceptional error handling
 
 def heart_beat():
     global wait,status,token
     while True:
-        token_update()
-        print("status:"+str(status))
-        if status == 4 or status == 2:  #可以更好的抓住status 2作为提交机会
-            print("login to get new token...")
-            login(username,password)
-            status = 0
+        try:
+            token_update()
+            wait+=config.beat_delay
+            time.sleep(config.beat_delay)
             print("status update:" + str(status))
-        wait+=config.beat_delay
-        time.sleep(config.beat_delay)
+        except requests.exceptions.ConnectionError as err:
+            if (str(err) == "invalid or expired jwt" or
+                    str(err) == "missing or malformed jwt" or
+                    str(err) == "Internal Server Error"):
+                print("login to get new token...")
+                login(username,password)
+                status = "fine"
+                print("status update:" + str(status))
+            else:
+                if "Connection refused" in str(err):
+                    err = "Connection refused"
+                print("status update:" + str(err))
+                wait += config.beat_delay
+                time.sleep(config.beat_delay)
+        except Exception as err:
+            log_and_print(config.log_file, "heartbeat occur unexpected error:" + str(err))
+            status = "?"
 
 def log_and_print(file_name:str ,content):
     current_time = datetime.now().strftime('%Y-%m-%d-%H:%M:%S ')
@@ -125,28 +114,34 @@ def log_and_print(file_name:str ,content):
 
 
 
-for i in range(20):
+for i in range(config.max_retries):
     try:
-        password=get_password(user_name=username)
+        password=get_password(username)
         login(username,password)
         break
-    except Exception as e:
+    except requests.exceptions.ConnectionError as err:
+        if "Connection refused" in str(err):
+            err="Connection refused"
+        print("can't login due to network error:"+str(err))
         print("try again...")
         time.sleep(config.beat_delay)
-        #确保在网络异常时获得用户信息
+        continue
+    except Exception as e:
+        log_and_print(config.log_file,"login occur unexpected error:" + str(e))
 
 beat=threading.Thread(target=heart_beat,daemon=True) #daemon used to stop this thread when main thread stop
 beat.start()
 #开始心跳，来检查服务器状态
 
-while success < 15:
-    if wait>30 and status==0:#条件允许，则提交code
+while success < config.post_target:
+    if wait>config.code_fresh and status== "fine": #条件允许，则提交code
         try:
             get_and_post_code(token)
             success+=1
             print(f"it is the {success} success!!!!!!!")
             wait=0
         except Exception as e:
-            log_and_print(config.log_file,"run:"+str(e))
-            status=-1
+            if "Connection refused" not in str(e):
+                log_and_print(config.log_file,"post occur unexpected error:" + str(e))
+                status= "?"
 

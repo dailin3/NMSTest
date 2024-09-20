@@ -16,7 +16,7 @@ validate_url="http://127.0.0.1:1323/api/validate"
 secrets_key = "Hello_new_Byrs_1234123412341234"
 
 
-beat_delay = 5
+beat_delay = 10
 wait_code = 30
 post_target = 15
 code_fresh = 30
